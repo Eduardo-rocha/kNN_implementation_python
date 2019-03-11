@@ -1,0 +1,1 @@
+{"metadata": {"features": [["a", "numeric"],["b", ["cat", "dog"]], ["b2", ["cat", "dog"]], ["c", "numeric"], ["label", [1, 2, 3]]]}, "data": [[1, "cat", "cat", 3, 1], [4, "dog", "cat", 6, 2], [2, "dog", "dog", 2, 2]]}
