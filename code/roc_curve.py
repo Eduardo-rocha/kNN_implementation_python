@@ -1,12 +1,7 @@
-#!/usr/bin/env python3.6
-# chmod +x fileName.py
-
 ######################################################################################
-# CS 760, Spring 2019
-# HW 1
 # Eduardo Moura Cirilo Rocha, mouracirilor@wisc.edu
 # February of 2019
-# Problem 1: knn_classifier
+# roc_curve
 ######################################################################################
 
 
@@ -44,8 +39,7 @@ testData = testSet["data"]
 
 numFeatures = [f for f in features if f[1] == "numeric"]
 catFeatures = [f for f in features if f[1] != "numeric"]
-#print(numFeatures)
-#print(catFeatures)
+
 
 numTrainingData =np.array(\
 	[[instance[f] for f in range(numberFeatures) if features[f][1] == "numeric"]\
@@ -61,17 +55,12 @@ catTestData =np.array(\
 	[[instance[f] for f in range(numberFeatures) if features[f][1] != "numeric"]\
 	for instance in testData])
 
-#print(numTrainingData)
-#print(catTrainingData)
-#print(numTestData)
-#print(catTestData)
 
 # Standarizing numeric features ######################################################
 
 # vectors with means and stddevs
 # length = # of numeric features
 means = np.sum(numTrainingData,0)/len(trainingData) # length = # of numeric features
-#print(means)
 
 stddev_diff = np.array(\
 	[numTrainingData[j][:]-means for j in range(len(trainingData))])
@@ -83,10 +72,6 @@ for i in range(len(stddev)):
 	if stddev[i] == 0: 
 		stddev[i] = 1 
 		means[i]  = 0
-
-#print(stddev_diff)
-#print(stddev_diff_squared)
-#print(stddev)
 
 # Standarize training data = (x-mean)/stddev
 
@@ -100,10 +85,12 @@ numTestDataStd = np.array(\
 
 # Calculate distances ################################################################
 # Find k-NN           ################################################################
-# Predict label       ################################################################
 
 totalTests = 0
 correctPredictions = 0
+
+confidence = [0 for j in range(len(numTestDataStd))]
+yi = [0 for j in range(len(numTestDataStd))]
 
 for i in range(len(numTestDataStd)):
 	# Numeric features - Manhattan distance
@@ -125,11 +112,25 @@ for i in range(len(numTestDataStd)):
 	#print(distanceInstance)
 
 	# Find k-NN
+	distanceInstance_aux = np.copy(distanceInstance)
 	kNN_indexes = [0 for j in range(k)]
 	for j in range(k):
-		kNN_indexes[j] = np.argmin(distanceInstance)
-		distanceInstance[kNN_indexes[j]] = np.amax(distanceInstance)+1
+		kNN_indexes[j] = np.argmin(distanceInstance_aux)
+		distanceInstance_aux[kNN_indexes[j]] = np.amax(distanceInstance_aux)+1
 	#print(kNN_indexes)
+
+	
+	# calculate wn to neighboors
+	epslon = 10**(-5)
+	wn = np.power(np.power(\
+		np.array([distanceInstance[kNN_indexes[j]] for j in range(k)])\
+		, 2) + epslon, -1)
+	yn = [trainingData[kNN_indexes[j]][-1] for j in range(k)]
+	yn = [yn[f] == testSet["metadata"]["features"][-1][1][0] for f in range(len(yn))]
+
+	confidence[i] = np.divide(np.sum(np.multiply(wn, yn)),np.sum(wn))
+
+
 
 	# Count labels in k-NN
 	numberLabels = len(testSet["metadata"]["features"][-1][1])
@@ -144,62 +145,54 @@ for i in range(len(numTestDataStd)):
 	# mode of labels - first label if tie
 	prediction = testSet["metadata"]["features"][-1][1][np.argmax(labelsCount)]
 	correctLabel = testData[i][-1]
-	#print(prediction)
-	#print(correctLabel)
+	yi[i] = correctLabel == testSet["metadata"]["features"][-1][1][0]
 
-	# Compute Accuracy variables
-	totalTests += 1
-	if prediction == correctLabel: correctPredictions += 1
 
-	# Print output
-	for l in range(numberLabels):
-		print(str(labelsCount[l])+",", end='')
-	print(prediction)
+# Roc ###############################################################
 
-# Accuracy of test set ###############################################################
-
-accuracy = correctPredictions/totalTests
-#print('\nTest set accuracy: ',accuracy,'\n')
+# sorted indices
+sortedIndex = [0 for j in range(len(confidence))]
+confidence_aux = np.copy(confidence)
+yi_aux = np.copy(yi)
+for i in range(len(sortedIndex)):
+	sortedIndex[i] = np.argmax(confidence_aux)
+	confidence_aux[sortedIndex[i]] = -1
 
 
 
 
 
+num_pos = np.sum(yi)
+num_neg = len(yi) - num_pos
+
+TP = 0
+FP = 0
+last_TP = 0
+
+j = 0
+for i in sortedIndex:
+	confidence_aux[j] = confidence[i]
+	yi_aux[j] = yi[i]
+	j += 1
 
 
+for i in range(len(sortedIndex)):
+	if (i>0):
+		if (confidence_aux[i]!=confidence_aux[i-1]) and ( yi_aux[i] == False) and (TP > last_TP):
+			FPR = FP/num_neg
+			TPR =TP/num_pos
+			print(str(FPR)+","+str(TPR))
+			last_TP = TP
+
+	if yi_aux[i]:
+		TP += 1
+	else:
+		FP += 1
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+FPR = FP/num_neg
+TPR =TP/num_pos
+print(str(FPR)+","+str(TPR))
 
 
 
